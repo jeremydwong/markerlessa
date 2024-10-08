@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 def get_list_x_clicks_on_plot(data):
   f,ax = plt.subplots()
+  plt.ion()
   plt.plot(data)
   coordinates = []
   # Function to capture mouse clicks
@@ -12,18 +13,20 @@ def get_list_x_clicks_on_plot(data):
 
   # Connect the click event to the function
   cid = plt.gcf().canvas.mpl_connect('button_press_event', onclick)
-  plt.show()
+  plt.draw()
+  plt.show(block=False)
+  plt.pause(10)
 
   return coordinates
 
-def get_rotmat(data):
+def get_rotmat(nx3):
   
-  ind_clicks = get_list_x_clicks_on_plot(data)
+  ind_clicks = get_list_x_clicks_on_plot(nx3)
   ind_clicks = [int(np.round(ind_clicks[i])) for i in range(3)]
   print(ind_clicks)
-  pt1 = data[ind_clicks[0],:]
-  pt2 = data[ind_clicks[1],:]
-  pt3 = data[ind_clicks[2],:]
+  pt1 = nx3[ind_clicks[0],:]
+  pt2 = nx3[ind_clicks[1],:]
+  pt3 = nx3[ind_clicks[2],:]
   
   # define which order. assume standard:
   v1 = pt3 - pt2 # positive right
@@ -39,4 +42,5 @@ def get_rotmat(data):
 
   # compute the rotation matrix to go from the data frame to that defined by v1,v2,v3
   R = np.array([v1,v2,v3])
+  
   return R

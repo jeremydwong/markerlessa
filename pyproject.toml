@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "markerlessa"
+version = "0.1.0"
+description = "markerless motion capture libraries for student projects."
+authors = ["jeremy wong <jeremydwong@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+numpy = "^2.1.2"
+pandas = "^2.2.3"
+scipy = "^1.14.1"
+matplotlib = "^3.9.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

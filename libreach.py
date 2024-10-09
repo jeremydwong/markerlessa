@@ -2,31 +2,41 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def get_list_x_clicks_on_plot(data):
+# Functions for students to use to simplify their data analysis
+# get_list_x_clicks_on_plot(data)
+
+
+def get_rotmat(data_nx3):
+  
+  # plot the data, with a title
   f,ax = plt.subplots()
   plt.ion()
-  plt.plot(data)
-  coordinates = []
+  plt.plot(data_nx3)
+  titletxt = f"Click 3 times to back-left, front-left,front-right:"
+  plt.title(titletxt)
+  
+  # initialize the list of x-clicks we will collect
+  ind_xclicks = []
   # Function to capture mouse clicks
   def onclick(event):
-    coordinates.append((event.xdata))
+    ind_xclicks.append((event.xdata))
+    # break if coordinates are 3
+    if len(ind_xclicks) == 3:
+      plt.gcf().canvas.mpl_disconnect(cid)
+      plt.close()
 
   # Connect the click event to the function
   cid = plt.gcf().canvas.mpl_connect('button_press_event', onclick)
   plt.draw()
-  plt.show(block=False)
-  plt.pause(10)
+  plt.show(block=True)
 
-  return coordinates
-
-def get_rotmat(nx3):
+  # round the indices of the clicks
+  ind_xclicks = [int(np.round(ind_xclicks[i])) for i in range(3)]
   
-  ind_clicks = get_list_x_clicks_on_plot(nx3)
-  ind_clicks = [int(np.round(ind_clicks[i])) for i in range(3)]
-  print(ind_clicks)
-  pt1 = nx3[ind_clicks[0],:]
-  pt2 = nx3[ind_clicks[1],:]
-  pt3 = nx3[ind_clicks[2],:]
+  # define vectors in 3D
+  pt1 = data_nx3[ind_xclicks[0],:]
+  pt2 = data_nx3[ind_xclicks[1],:]
+  pt3 = data_nx3[ind_xclicks[2],:]
   
   # define which order. assume standard:
   v1 = pt3 - pt2 # positive right
@@ -44,3 +54,54 @@ def get_rotmat(nx3):
   R = np.array([v1,v2,v3])
   
   return R
+
+def draw_body_parts(pddata,R,indrange):
+  f,ax = plt.subplots()
+  # set axis as 3d
+  ax = f.add_subplot(111, projection='3d')
+  ''''
+  def draw_body_parts
+  wip: meant to handle arbirary body parts to be drawn as segment.
+  '''
+  sh_l = R @ np.array([pddata['left_shoulder_x'][indrange[0:1]],pddata['left_shoulder_y'][indrange[0:1]],pddata['left_shoulder_z'][indrange[0:1]]])
+  sh_r = R @ np.array([pddata['right_shoulder_x'][indrange[0:1]],pddata['right_shoulder_y'][indrange[0:1]],pddata['right_shoulder_z'][indrange[0:1]]])
+  hi_r = R @ np.array([pddata['right_hip_x'][indrange[0:1]],pddata['right_hip_y'][indrange[0:1]],pddata['right_hip_z'][indrange[0:1]]])
+  hi_l = R @ np.array([pddata['left_hip_x'][indrange[0:1]],pddata['left_hip_y'][indrange[0:1]],pddata['left_hip_z'][indrange[0:1]]])
+
+  sh_l = sh_l/1000
+  sh_r = sh_r/1000
+  hi_r = hi_r/1000
+  hi_l = hi_l/1000
+
+  sh_lz = sh_l# - sho_fix
+  sh_rz = sh_r# - sho_fix
+  hi_rz = hi_r# - sho_fix
+  hi_lz = hi_l# - sho_fix
+
+  ax.plot(np.concatenate((sh_lz[0,0:1],sh_rz[0,0:1],hi_rz[0,0:1],hi_lz[0,0:1],sh_lz[0,0:1])),
+          np.concatenate((sh_lz[1,0:1],sh_rz[1,0:1],hi_rz[1,0:1],hi_lz[1,0:1],sh_lz[1,0:1])),
+          np.concatenate((sh_lz[2,0:1],sh_rz[2,0:1],hi_rz[2,0:1],hi_lz[2,0:1],sh_lz[2,0:1])),c='k',linewidth=3)
+
+
+  # as above, but draw the lines from right shoulder to right_elbow, right_wrist, right_hand
+  el_r = R @ np.array([pddata['right_elbow_x'][indrange[0:1]],pddata['right_elbow_y'][indrange[0:1]],pddata['right_elbow_z'][indrange[0:1]]])
+  wr_r = R @ np.array([pddata['right_wrist_x'][indrange[0:1]],pddata['right_wrist_y'][indrange[0:1]],pddata['right_wrist_z'][indrange[0:1]]])
+  ha_r = R @ np.array([pddata['right_hand_x'][indrange[0:1]],pddata['right_hand_y'][indrange[0:1]],pddata['right_hand_z'][indrange[0:1]]])
+
+  el_r = el_r/1000
+  wr_r = wr_r/1000
+  ha_r = ha_r/1000
+
+  el_rz = el_r# - sho_fix 
+  wr_rz = wr_r# - sho_fix
+  ha_rz = ha_r# - sho_fix
+
+  ax.plot(np.concatenate((sh_rz[0,0:1],el_rz[0,0:1],wr_rz[0,0:1],ha_rz[0,0:1])),
+          np.concatenate((sh_rz[1,0:1],el_rz[1,0:1],wr_rz[1,0:1],ha_rz[1,0:1])),
+          np.concatenate((sh_rz[2,0:1],el_rz[2,0:1],wr_rz[2,0:1],ha_rz[2,0:1])),c='k',linewidth=3)  
+
+  pm = 1.0
+  # set 3d axis limits to be sh_lz +/- pm
+  ax.set_xlim3d([sh_lz[0,0]-pm,sh_lz[0,0]+pm])
+
+  plt.show(block=True)

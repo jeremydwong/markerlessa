@@ -97,19 +97,10 @@ def draw_body_parts(pddata,R,indrange):
   # label z axis
   ax.set_zlabel('Z (m)')
 
+  # set the default view to be aligned y axis
+  ax.view_init(elev=0,azim=0)
   plt.show(block=True)
 
 # define Rshoulder
 
 draw_body_parts(pddata,R,[100])
-
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %%

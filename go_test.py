@@ -84,11 +84,11 @@ def draw_body_parts(pddata,R,indrange):
           np.concatenate((sh_lz[1,0:1],el_lz[1,0:1],wr_lz[1,0:1],ha_lz[1,0:1])),
           np.concatenate((sh_lz[2,0:1],el_lz[2,0:1],wr_lz[2,0:1],ha_lz[2,0:1])),c='b',linewidth=3)
   
-  pm = 1.0
+  pm = .5
   # set 3d axis limits to be sh_lz +/- pm
-  ax.set_xlim3d([sh_lz[0,0]-pm,sh_lz[0,0]+pm])
-  ax.set_ylim3d([sh_lz[1,0]-pm,sh_lz[1,0]+pm])
-  ax.set_zlim3d([sh_lz[2,0]-pm,sh_lz[2,0]+pm])
+  ax.set_xlim3d([sh_lz[0,0]-pm,sh_rz[0,0]+pm])
+  ax.set_ylim3d([sh_lz[1,0]-pm,sh_rz[1,0]+pm])
+  ax.set_zlim3d([sh_lz[2,0]-pm,sh_rz[2,0]+pm])
   
   # label x axis
   ax.set_xlabel('X (m)')
@@ -98,9 +98,11 @@ def draw_body_parts(pddata,R,indrange):
   ax.set_zlabel('Z (m)')
 
   # set the default view to be aligned y axis
-  ax.view_init(elev=0,azim=0)
+  ax.view_init(elev=80,azim=-90)
   plt.show(block=True)
 
 # define Rshoulder
 
 draw_body_parts(pddata,R,[100])
+
+# %%

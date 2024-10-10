@@ -6,26 +6,31 @@ import pandas as pd
 import numpy as np
 import matplotlib
 matplotlib.use('qtagg')
-# name of the data dir
-datadir = "/Users/jeremy/OneDrive - University of Calgary/Zara Thesis Project/Python Refresher Assignments/"
+# this file is in src/, we want the repo name which is parent
+path_repo = os.path.dirname(os.path.dirname(__file__))
+path_data = os.path.join(path_repo, 'data')
+# the name of the folder containing dirname
 
 # name of the R file
-fname = "recording_11_28_21_gmt-7_by_trajectory.csv" #jer
-fname_r_1009 = "/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Zara Thesis Project/Data/2024-10-09/recordings/coords/HOLISTIC_OPENSIM/xyz_HOLISTIC_OPENSIM_labelled.csv"
-df    = pd.read_csv(fname_r_1009)
+fname_coords = "example_coords.csv"
+path_coords = os.path.join(path_data, fname_coords)
+
+df    = pd.read_csv(path_coords)
 data = df[['left_foot_index_x', 'left_foot_index_y', 'left_foot_index_z']].to_numpy()
-R = lr.get_rotmat(data)
+R,X0 = lr.get_rotmat_x0(data)
 
 # %%
 # get the name of the folder containing this file
-# dirname = os.path.dirname(__file__)
+
 # fname_data = os.path.join(dirname, 'example_jacks.csv')
 
 #%% in this cell i just want to create a plotting function we can make rapid changes to. 
 import matplotlib.pyplot as plt
-pddata = pd.read_csv(fname_data)
+fname_data = "example_jacks.csv"
+path_data = os.path.join(path_data,fname_data)
+pddata = pd.read_csv(path_data)
 
-def draw_body_parts(pddata,R,indrange):
+def draw_body_parts(pddata,R,x0,indrange):
   f,ax = plt.subplots()
   # set axis as 3d
   ax = f.add_subplot(111, projection='3d')
@@ -33,20 +38,16 @@ def draw_body_parts(pddata,R,indrange):
   def draw_body_parts
   wip: meant to handle arbirary body parts to be drawn as segment.
   '''
+
   sh_l = R @ np.array([pddata['left_shoulder_x'][indrange[0:1]],pddata['left_shoulder_y'][indrange[0:1]],pddata['left_shoulder_z'][indrange[0:1]]])
   sh_r = R @ np.array([pddata['right_shoulder_x'][indrange[0:1]],pddata['right_shoulder_y'][indrange[0:1]],pddata['right_shoulder_z'][indrange[0:1]]])
   hi_r = R @ np.array([pddata['right_hip_x'][indrange[0:1]],pddata['right_hip_y'][indrange[0:1]],pddata['right_hip_z'][indrange[0:1]]])
   hi_l = R @ np.array([pddata['left_hip_x'][indrange[0:1]],pddata['left_hip_y'][indrange[0:1]],pddata['left_hip_z'][indrange[0:1]]])
 
-  sh_l = sh_l
-  sh_r = sh_r
-  hi_r = hi_r
-  hi_l = hi_l
-
-  sh_lz = sh_l# - sho_fix
-  sh_rz = sh_r# - sho_fix
-  hi_rz = hi_r# - sho_fix
-  hi_lz = hi_l# - sho_fix
+  sh_lz = sh_l - x0# - sho_fix
+  sh_rz = sh_r - x0# - sho_fix
+  hi_rz = hi_r - x0# - sho_fix
+  hi_lz = hi_l - x0# - sho_fix
 
   ax.plot(np.concatenate((sh_lz[0,0:1],sh_rz[0,0:1],hi_rz[0,0:1],hi_lz[0,0:1],sh_lz[0,0:1])),
           np.concatenate((sh_lz[1,0:1],sh_rz[1,0:1],hi_rz[1,0:1],hi_lz[1,0:1],sh_lz[1,0:1])),
@@ -58,12 +59,8 @@ def draw_body_parts(pddata,R,indrange):
   wr_r = R @ np.array([pddata['right_wrist_x'][indrange[0:1]],pddata['right_wrist_y'][indrange[0:1]],pddata['right_wrist_z'][indrange[0:1]]])
   # ha_r = R @ np.array([pddata['right_hand_x'][indrange[0:1]],pddata['right_hand_y'][indrange[0:1]],pddata['right_hand_z'][indrange[0:1]]])
 
-  el_r = el_r
-  wr_r = wr_r
-  # ha_r = ha_r
-
-  el_rz = el_r# - sho_fix 
-  wr_rz = wr_r# - sho_fix
+  el_rz = el_r - x0
+  wr_rz = wr_r - x0
   # ha_rz = ha_r# - sho_fix
 
   ax.plot(np.concatenate((sh_rz[0,0:1],el_rz[0,0:1],wr_rz[0,0:1])),
@@ -75,13 +72,9 @@ def draw_body_parts(pddata,R,indrange):
   wr_l = R @ np.array([pddata['left_wrist_x'][indrange[0:1]],pddata['left_wrist_y'][indrange[0:1]],pddata['left_wrist_z'][indrange[0:1]]])
   # ha_l = R @ np.array([pddata['left_hand_x'][indrange[0:1]],pddata['left_hand_y'][indrange[0:1]],pddata['left_hand_z'][indrange[0:1]]])
 
-  el_l = el_l
-  wr_l = wr_l
+  el_lz = el_l - x0
+  wr_lz = wr_l - x0 
   # ha_l = ha_l
-
-  el_lz = el_l# - sho_fix
-  wr_lz = wr_l# - sho_fix
-  # ha_lz = ha_l# - sho_fix
 
   ax.plot(np.concatenate((sh_lz[0,0:1],el_lz[0,0:1],wr_lz[0,0:1])),
           np.concatenate((sh_lz[1,0:1],el_lz[1,0:1],wr_lz[1,0:1])),
@@ -107,8 +100,7 @@ def draw_body_parts(pddata,R,indrange):
   # return the right arm
   return [sh_rz,el_rz,wr_rz]
 
-rightarm = draw_body_parts(pddata,R,[100])
-
+rightarm = draw_body_parts(pddata,R,X0,[100])
 # %%
 # el_r = R @ np.array([pddata['right_elbow_x'],pddata['right_elbow_y'],pddata['right_elbow_z']])
 # plt.plot(el_r[0,:],el_r[1,:])

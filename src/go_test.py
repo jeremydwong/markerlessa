@@ -10,17 +10,20 @@ matplotlib.use('qtagg')
 datadir = "/Users/jeremy/OneDrive - University of Calgary/Zara Thesis Project/Python Refresher Assignments/"
 
 # name of the R file
-fname = "recording_11_28_21_gmt-7_by_trajectory.csv"
-df    = pd.read_csv(os.path.join(datadir, fname))
+fname = "recording_11_28_21_gmt-7_by_trajectory.csv" #jer
+fname_r_1009 = "/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Zara Thesis Project/Data/2024-10-09/recordings/coords/HOLISTIC_OPENSIM/xyz_HOLISTIC_OPENSIM_labelled.csv"
+df    = pd.read_csv(fname_r_1009)
 data = df[['left_foot_index_x', 'left_foot_index_y', 'left_foot_index_z']].to_numpy()
 R = lr.get_rotmat(data)
 
 # %%
-fname = "recording_12_25_05_gmt-7_by_trajectory.csv"
+# get the name of the folder containing this file
+# dirname = os.path.dirname(__file__)
+# fname_data = os.path.join(dirname, 'example_jacks.csv')
 
-#%%
+#%% in this cell i just want to create a plotting function we can make rapid changes to. 
 import matplotlib.pyplot as plt
-pddata = pd.read_csv(os.path.join(datadir, fname))
+pddata = pd.read_csv(fname_data)
 
 def draw_body_parts(pddata,R,indrange):
   f,ax = plt.subplots()
@@ -35,10 +38,10 @@ def draw_body_parts(pddata,R,indrange):
   hi_r = R @ np.array([pddata['right_hip_x'][indrange[0:1]],pddata['right_hip_y'][indrange[0:1]],pddata['right_hip_z'][indrange[0:1]]])
   hi_l = R @ np.array([pddata['left_hip_x'][indrange[0:1]],pddata['left_hip_y'][indrange[0:1]],pddata['left_hip_z'][indrange[0:1]]])
 
-  sh_l = sh_l/1000
-  sh_r = sh_r/1000
-  hi_r = hi_r/1000
-  hi_l = hi_l/1000
+  sh_l = sh_l
+  sh_r = sh_r
+  hi_r = hi_r
+  hi_l = hi_l
 
   sh_lz = sh_l# - sho_fix
   sh_rz = sh_r# - sho_fix
@@ -53,36 +56,36 @@ def draw_body_parts(pddata,R,indrange):
   # as above, but draw the lines from right shoulder to right_elbow, right_wrist, right_hand
   el_r = R @ np.array([pddata['right_elbow_x'][indrange[0:1]],pddata['right_elbow_y'][indrange[0:1]],pddata['right_elbow_z'][indrange[0:1]]])
   wr_r = R @ np.array([pddata['right_wrist_x'][indrange[0:1]],pddata['right_wrist_y'][indrange[0:1]],pddata['right_wrist_z'][indrange[0:1]]])
-  ha_r = R @ np.array([pddata['right_hand_x'][indrange[0:1]],pddata['right_hand_y'][indrange[0:1]],pddata['right_hand_z'][indrange[0:1]]])
+  # ha_r = R @ np.array([pddata['right_hand_x'][indrange[0:1]],pddata['right_hand_y'][indrange[0:1]],pddata['right_hand_z'][indrange[0:1]]])
 
-  el_r = el_r/1000
-  wr_r = wr_r/1000
-  ha_r = ha_r/1000
+  el_r = el_r
+  wr_r = wr_r
+  # ha_r = ha_r
 
   el_rz = el_r# - sho_fix 
   wr_rz = wr_r# - sho_fix
-  ha_rz = ha_r# - sho_fix
+  # ha_rz = ha_r# - sho_fix
 
-  ax.plot(np.concatenate((sh_rz[0,0:1],el_rz[0,0:1],wr_rz[0,0:1],ha_rz[0,0:1])),
-          np.concatenate((sh_rz[1,0:1],el_rz[1,0:1],wr_rz[1,0:1],ha_rz[1,0:1])),
-          np.concatenate((sh_rz[2,0:1],el_rz[2,0:1],wr_rz[2,0:1],ha_rz[2,0:1])),c='r',linewidth=3)  
+  ax.plot(np.concatenate((sh_rz[0,0:1],el_rz[0,0:1],wr_rz[0,0:1])),
+          np.concatenate((sh_rz[1,0:1],el_rz[1,0:1],wr_rz[1,0:1])),
+          np.concatenate((sh_rz[2,0:1],el_rz[2,0:1],wr_rz[2,0:1])),c='r',linewidth=3)  
 
   # as above, plotting the left arm
   el_l = R @ np.array([pddata['left_elbow_x'][indrange[0:1]],pddata['left_elbow_y'][indrange[0:1]],pddata['left_elbow_z'][indrange[0:1]]])
   wr_l = R @ np.array([pddata['left_wrist_x'][indrange[0:1]],pddata['left_wrist_y'][indrange[0:1]],pddata['left_wrist_z'][indrange[0:1]]])
-  ha_l = R @ np.array([pddata['left_hand_x'][indrange[0:1]],pddata['left_hand_y'][indrange[0:1]],pddata['left_hand_z'][indrange[0:1]]])
+  # ha_l = R @ np.array([pddata['left_hand_x'][indrange[0:1]],pddata['left_hand_y'][indrange[0:1]],pddata['left_hand_z'][indrange[0:1]]])
 
-  el_l = el_l/1000
-  wr_l = wr_l/1000
-  ha_l = ha_l/1000
+  el_l = el_l
+  wr_l = wr_l
+  # ha_l = ha_l
 
   el_lz = el_l# - sho_fix
   wr_lz = wr_l# - sho_fix
-  ha_lz = ha_l# - sho_fix
+  # ha_lz = ha_l# - sho_fix
 
-  ax.plot(np.concatenate((sh_lz[0,0:1],el_lz[0,0:1],wr_lz[0,0:1],ha_lz[0,0:1])),
-          np.concatenate((sh_lz[1,0:1],el_lz[1,0:1],wr_lz[1,0:1],ha_lz[1,0:1])),
-          np.concatenate((sh_lz[2,0:1],el_lz[2,0:1],wr_lz[2,0:1],ha_lz[2,0:1])),c='b',linewidth=3)
+  ax.plot(np.concatenate((sh_lz[0,0:1],el_lz[0,0:1],wr_lz[0,0:1])),
+          np.concatenate((sh_lz[1,0:1],el_lz[1,0:1],wr_lz[1,0:1])),
+          np.concatenate((sh_lz[2,0:1],el_lz[2,0:1],wr_lz[2,0:1])),c='b',linewidth=3)
   
   pm = .5
   # set 3d axis limits to be sh_lz +/- pm
@@ -101,8 +104,12 @@ def draw_body_parts(pddata,R,indrange):
   ax.view_init(elev=80,azim=-90)
   plt.show(block=True)
 
-# define Rshoulder
+  # return the right arm
+  return [sh_rz,el_rz,wr_rz]
 
-draw_body_parts(pddata,R,[100])
+rightarm = draw_body_parts(pddata,R,[100])
 
 # %%
+# el_r = R @ np.array([pddata['right_elbow_x'],pddata['right_elbow_y'],pddata['right_elbow_z']])
+# plt.plot(el_r[0,:],el_r[1,:])
+# plt.show()

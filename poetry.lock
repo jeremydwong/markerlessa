@@ -220,6 +220,21 @@ webencodings = "*"
 css = ["tinycss2 (>=1.1.0,<1.3)"]
 
 [[package]]
+name = "c3d"
+version = "0.4.0"
+description = "A library for manipulating C3D binary files"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "c3d-0.4.0-py3-none-any.whl", hash = "sha256:dd92fb7ae821853f70a2a21ba6de339b5bf4283ce822cf666f9b6a615670050d"},
+    {file = "c3d-0.4.0.tar.gz", hash = "sha256:581c81ff4b41e9348fb6c1f669761ad47c2e6ea2b8d8aa0c6888478360348646"},
+]
+
+[package.dependencies]
+numpy = "*"
+
+[[package]]
 name = "certifi"
 version = "2024.8.30"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -2930,6 +2945,20 @@ docs = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 test = ["argcomplete (>=3.0.3)", "mypy (>=1.7.0)", "pre-commit", "pytest (>=7.0,<8.2)", "pytest-mock", "pytest-mypy-testing"]
 
 [[package]]
+name = "trc-data-reader"
+version = "0.3.4"
+description = "A package for reading track row column (trc) motion capture data."
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "trc_data_reader-0.3.4-py3-none-any.whl", hash = "sha256:e66b257f6bb617cad09bf677defb8dac0b634cd0877618df8e8ca1fcd37f0875"},
+]
+
+[package.dependencies]
+c3d = "*"
+
+[[package]]
 name = "types-python-dateutil"
 version = "2.9.0.20241003"
 description = "Typing stubs for python-dateutil"
@@ -3069,4 +3098,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "b3889f520e163ff64a58af7e2b07c1d342594449f3d4b8056bd95646a7e43c79"
+content-hash = "ba9cd52a974fd87d071e2ca7e3d23b0481a4212e5d6006008bdf2ab381f25e7f"

@@ -15,6 +15,7 @@ jupyter = "^1.1.1"
 ipympl = "^0.9.4"
 urllib3 = "1.26.15"
 pyqt6 = "^6.7.1"
+trc-data-reader = "^0.3.4"
 
 
 [build-system]

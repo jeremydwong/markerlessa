@@ -8,29 +8,48 @@ import matplotlib
 matplotlib.use('qtagg')
 # this file is in src/, we want the repo name which is parent
 path_repo = os.path.dirname(os.path.dirname(__file__))
-path_datadir = os.path.join(path_repo, 'data')
-# the name of the folder containing dirname
+import tkinter as tk
+from tkinter import filedialog
 
-# name of the R file
-fname_coords = "example_coords.csv"
-path_coords = os.path.join(path_datadir, fname_coords)
+file_selected = ""
 
+def select_folder():
+    root = tk.Tk()
+    root.withdraw()  # Hide the main window
+    file_selected = filedialog.askdirectory(title="Choose coordinates file")  # Open the dialog to select a folder
+    return file_selected
+
+# initialize path_coords to empty
+path_coords = ""
+# loop while path_coords is empty
+while not path_coords:
+  path_coords = select_folder()
+  if path_coords:
+    print(f"You selected: {path_coords}")
+  else:
+    print("No file selected")
+
+# initialize file check
+path_check = ""
+# loop while path_coords is empty
+while not path_check:
+  path_check = select_folder()
+  if path_check:
+    print(f"You selected: {path_check}")
+  else:
+    print("No file selected")
+
+#%%
 df    = pd.read_csv(path_coords)
 data = df[['left_foot_index_x', 'left_foot_index_y', 'left_foot_index_z']].to_numpy()
 R,X0 = lr.get_rotmat_x0(data)
 
-# %%
-# get the name of the folder containing this file
-
-# fname_data = os.path.join(dirname, 'example_jacks.csv')
-
 #%% in this cell i just want to create a plotting function we can make rapid changes to. 
 import matplotlib.pyplot as plt
-fname_data = "example_jacks.csv"
-path_data = os.path.join(path_datadir,fname_data)
-pddata = pd.read_csv(path_data)
+fname_data = "trial_9_reach" #%12 10 9 7 6 5
+pddata = pd.read_csv(path_check)
 
-def draw_body_parts(pddata,R,x0,indrange):
+def draw_body_parts(pddata,R,x0,indrange,pm = .1):
   f,ax = plt.subplots()
   # set axis as 3d
   ax = f.add_subplot(111, projection='3d')
@@ -114,7 +133,7 @@ def draw_body_parts(pddata,R,x0,indrange):
             =cb,linewidth=3)
 
   # Plotting! axis limits and labels
-  pm = 1
+  
   # set 3d axis limits to be sh_lz +/- pm
   ax.set_xlim3d([hi_lz[0]-pm,hi_rz[0]+pm])
   ax.set_ylim3d([hi_lz[1]-pm,hi_rz[1]+pm])
@@ -130,21 +149,20 @@ def draw_body_parts(pddata,R,x0,indrange):
   plt.show(block=True)
 
   # return the right arm
-  return [sh_rz]
+  return [sh_rz,el_rz,wr_rz]
 
-rightarm = draw_body_parts(pddata,R,X0,np.arange(0,pddata.shape[0],10))
+rightarm = draw_body_parts(pddata,R,X0,np.arange(0,pddata.shape[0],10),pm=.1)
 
-#%%
-
+# plot over time
 f2,ax2 = plt.subplots()
-wr = pddata[["right_wrist_x","right_wrist_y","right_wrist_z"]].to_numpy()
+bodypart = "wrist"
+wr = pddata[["right_"+bodypart+"_x","right_"+bodypart+"_y","right_"+bodypart+"_z"]].to_numpy()
 wr = wr @ R.T
 wr = wr - X0
 ax2.plot(pddata["sync_index"],wr[:,0],label="x")
 ax2.plot(pddata["sync_index"],wr[:,1],label="y")
 ax2.plot(pddata["sync_index"],wr[:,2],label="z")
 ax2.set_xlabel("syncindex")
-ax2.set_ylabel("meters")
+ax2.set_ylabel("Position (m?)")
 ax2.legend()
 plt.show(block=True)
-# %%

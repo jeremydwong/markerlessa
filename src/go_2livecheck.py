@@ -1,4 +1,4 @@
-#%% load the data
+#%%
 # import pandas as pd 
 import os
 import libreach as lr
@@ -11,41 +11,44 @@ path_repo = os.path.dirname(os.path.dirname(__file__))
 import tkinter as tk
 from tkinter import filedialog
 
-folder_selected = ""
+file_selected = ""
 
-def select_folder():
+def select_folder(txt):
     root = tk.Tk()
     root.withdraw()  # Hide the main window
-    folder_selected = filedialog.askdirectory(title="choose recordings directory:")  # Open the dialog to select a folder
-    return folder_selected
+    file_selected = filedialog.askopenfile(title=txt)  # Open the dialog to select a folder
+    return file_selected
 
-# Use the function
-path_datadir = select_folder()
-if path_datadir:
-    print(f"You selected: {path_datadir}")
-else:
-    print("No folder selected")
+# initialize path_coords to empty
+path_coords = ""
+# loop while path_coords is empty
+while not path_coords:
+  path_coords = select_folder("Choose which recording directory containing holistic_opensim data")
+  if path_coords:
+    print(f"You selected: {path_coords}")
+  else:
+    print("No file selected")
 
-# the name of the folder containing dirname
+# initialize file check on the data.
+path_check = ""
+# loop while path_coords is empty
+while not path_check:
+  path_check = select_folder("Choose data file to check")
+  if path_check:
+    print(f"You selected: {path_check}")
+  else:
+    print("No file selected")
 
-# name of the R file
-fname_coords = "rotation_matrix_2"
-tracker_name = "HOLISTIC_OPENSIM"
-path_coords = os.path.join(path_datadir, fname_coords,tracker_name, "xyz_"+tracker_name+"_labelled.csv")
-
-df    = pd.read_csv(path_coords)
-data = df[['left_foot_index_x', 'left_foot_index_y', 'left_foot_index_z']].to_numpy()
+#%%
+df        = pd.read_csv(path_coords)
+bodypart  = "right_wrist" 
+data = df[[bodypart+"_x", bodypart+"_y", bodypart+"_z"]].to_numpy()
 R,X0 = lr.get_rotmat_x0(data)
-
-# %%
-
-# fname_data = os.path.join(dirname, 'example_jacks.csv')
 
 #%% in this cell i just want to create a plotting function we can make rapid changes to. 
 import matplotlib.pyplot as plt
 fname_data = "trial_9_reach" #%12 10 9 7 6 5
-path_data = os.path.join(path_datadir, fname_data,tracker_name, "xyz_"+tracker_name+"_labelled.csv")
-pddata = pd.read_csv(path_data)
+pddata = pd.read_csv(path_check)
 
 def draw_body_parts(pddata,R,x0,indrange,pm = .1):
   f,ax = plt.subplots()

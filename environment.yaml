@@ -1,4 +1,4 @@
-name: markerlessa
+name: markerlessaconda
 channels:
   - conda-forge
   - defaults
@@ -10,10 +10,10 @@ dependencies:
   - matplotlib>=3.9.2,<4.0
   - jupyter>=1.1.1,<2.0
   - ipympl>=0.9.4,<0.10.0
-  - urllib3=1.26.15  # keeping exact since you specified exact in Poetry
-  - pyqt>=6.7.1,<7.0
+  - urllib3=1.26.15  # keeping exact for poetry, but can remove probably.
   - statsmodels>=0.14.4,<0.15.0
   - pip
   - pip:
     - trc-data-reader>=0.3.4,<0.4.0
     - colour>=0.1.5,<0.2.0
+    - PyQt6>=6.7.1,<7.0

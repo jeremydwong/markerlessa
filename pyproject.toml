@@ -17,6 +17,7 @@ urllib3 = "1.26.15"
 pyqt6 = "^6.7.1"
 trc-data-reader = "^0.3.4"
 statsmodels = "^0.14.4"
+colour = "^0.1.5"
 
 
 [build-system]

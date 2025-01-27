@@ -5,18 +5,20 @@
 
 # here are the subject-specific and analyzer-specific things.
 # datafolder_string_zara
-# datafolder_string_jer
+# datafolder_string_jer = r"/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Undergrad 2024 Shared Folder/"
 # datafolder_string_jess
 # datafolder_string_surabhi
 
 datafolder_string = r"/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Undergrad 2024 Shared Folder/"
-date_string       = "2025-01-10"
-subj_name         = "jer"
+date_string       = "2025-01-21"
+subj_name         = "pilot0121"
 sr_datacollection = 28 #this defines interpolation. 
-fname_coords      = 'recording_coord'
-fnames_trials     = ['recording_circles5sec']
-model_type        = 'SIMPLE_HOLISTIC'
-str_bodyprtcal    = 'right_index_finger_tip'
+fname_coords      = 'coordmatrix2'
+fnames_trials     = ['recording_24']
+model_type        = 'SIMPLE_HOLISTIC'       # this is the model type. maybe this is constant for now.
+str_bodyprtcal    = 'right_index_finger_tip' # this is what we should usually use i think!
+xdir = -1 # which direction is pt3-pt2? if (pt3 - pt2) is +right, xdir=1. if pt3 - pt2 is a leftward vector, then -1.
+#Note: as 2025-01-21, the l/r vector was drawn from the right to the left. this is a negative x direction..
 
 #%%
 import os
@@ -71,7 +73,7 @@ if os.path.exists(fname_full):
   R   = dat["R"]
   x0  = dat["x0"]
 else:
-  R,x0    = lr.get_rotmat_x0(cal_bdyprt)
+  R,x0    = lr.get_rotmat_x0(cal_bdyprt,xdir=xdir)
   # save R
   scipy.io.savemat(fname_full,{'R':R, 'x0':x0})
 
@@ -106,7 +108,7 @@ for i in range(len(fnames_trials)):
   
   # creates an object that organizes the data nicely; so that for 
   # example reach_trial.wri is nX3.
-  reach_trial = lr.ReachBody(pddata_cur, subj_name, fname_coords, R, x0, sr_datacollection)
+  reach_trial = lr.ReachBody(pddata_cur, subj_name, fnames_trials[i],R, x0, sr_datacollection)
 
   # extract starts and ends with a series of clicks.
   reach_trial.click_add_reach_starts_ends(cached_folder=cached_folder_string) #can be different for each user. so done programmatically.
@@ -129,7 +131,7 @@ for i in range(len(fnames_trials)):
   plt.show(block=True)
   # pause for input
 
-#%% step 4: perform mainsequence analysis.
+#%% step 4: mainsequence analysis.
 # note: mainsequence comes from 'mainsequence' Bahill, ..., Stark 1975.
 # score the middle movements using peaks_and_valleys, or manual if it's the wrong number.
 for i in range(len(fnames_trials)):
@@ -144,18 +146,13 @@ for i in range(len(fnames_trials)):
 
   distancelist, durationlist, peakspeedlist, indlist_middle_mvmnt_start_end = reach_trial.mainsequence(cached_folder = cached_folder_string)
 
-  # each element in this list is a tuple! (time, positionxyz)
-  list_time_position = reach_trial.cut_middle_movements(indlist_middle_mvmnt_start_end)
-  #%% just plot finger positions for everything. maybe this isn't useful.
+  # each element in this list is a tuple! time, then wrist.
+  tpllist_time_wrist = reach_trial.cut_middle_movements(indlist_middle_mvmnt_start_end)
+  #%%
   fig,ax = plt.subplots()
-  right_finger = getattr(reach_trial, str_bodyprtcal)
-  labels = ['x,','y','z']
-  # there are 3 columns to be labelled x y z
-  for i in range(right_finger.shape[1]):
-    ax.plot(right_finger[:,i],label = labels[i])
+  ax.plot(reach_trial.wri_f - reach_trial.sho_f)
   ax.set_xlabel('sample')
   ax.set_ylabel('position (m)')
-  ax.legend()
   plt.show(block = True)
   
   #%% Step 5: plot mainsequence results.
@@ -168,109 +165,97 @@ for i in range(len(fnames_trials)):
   ax[0].set_xlabel('Distance (m)')
   ax[0].set_ylabel('Duration (s)')
   #set xlimit
-  ax[0].set_xlim([0,1])
-  ax[0].set_ylim([0,1.5])
-  
+  # ax[0].set_xlim([0,.5])
+  # ax[0].set_ylim([0,1.0])
   ax[1].plot(distancelist,peakspeedlist,'o')
   ax[1].set_xlabel('Distance (m)')
   ax[1].set_ylabel('Peak Speed (m/s)')
-  ax[1].set_xlim([0,1])
-  ax[1].set_ylim([0,2])
-  plt.show(block=True)
-  #%%
+  # ax[1].set_xlim([0,0.5])
+  # ax[1].set_ylim([0,1.5])
+  #%
   #%% Plot 
   # 1. tangential velocity 
   # 2. hand position in 3D
   # 3. rotated hand position in 3D
-  # open figure size nxn
-  n_inch = 6
   fig = plt.figure()
-  fig.set_size_inches(n_inch,n_inch)
+  fig.set_size_inches(2,2)
 
   tgts = list()
   ax_3d    = fig.add_subplot(221,projection='3d')
   ax_3dr  = fig.add_subplot(222,projection='3d')
   ax_tv   = fig.add_subplot(223) 
 
-  for i in range(len(list_time_position)):
+  for i in range(len(tpllist_time_wrist)):
     ind01      = indlist_middle_mvmnt_start_end[i] # the indices of the middle movement. can use to get sho/finger any other column.
     inds      = range(ind01[0],ind01[1])
-    t         = list_time_position[i][0]
-    movxyz    = list_time_position[i][1]
+    t         = tpllist_time_wrist[i][0]
+    movwri    = tpllist_time_wrist[i][1]
     
-    ax_3d.plot(movxyz[:,0], movxyz[:,1], movxyz[:,2])    
-    tgt_start = movxyz[0,:]
-    tgt_end = movxyz[-1,:]
-    ax_3d.plot(tgt_start[0], tgt_start[1], tgt_start[2], 'go')
-    ax_3d.plot(tgt_end[0], tgt_end[1], tgt_end[2], 'ro')
-    ax_3d.text(tgt_end[0], tgt_end[1], tgt_end[2], str(i))
-    
-    # set title
-    ax_3d.set_title('Position of '+str_bodyprtcal)
+    ax_3d.plot(movwri[:,0], movwri[:,1], movwri[:,2])    
+    tgt_start = movwri[0,:]
+    tgt_end = movwri[-1,:]
+    ax_3d.plot(tgt_start[0], tgt_start[1], tgt_start[2], 'ro')
+    ax_3d.plot(tgt_end[0], tgt_end[1], tgt_end[2], 'go')
+    ax_3dr.set_aspect('equal')
 
     # zero the movements to the first shoulder position of the first movement.
-    sho0 = reach_trial.right_shoulder[reach_trial.mov_starts[0:1],:]
-    mov_wrt_sho = movxyz - sho0
-    
-    ax_3dr.plot(mov_wrt_sho[:,0], mov_wrt_sho[:,1], mov_wrt_sho[:,2])
-    tgt_start = mov_wrt_sho[0,:]
-    tgt_end = mov_wrt_sho[-1,:]
-    ax_3dr.plot(tgt_start[0], tgt_start[1], tgt_start[2], 'go')
-    ax_3dr.plot(tgt_end[0], tgt_end[1], tgt_end[2], 'ro')
-    # label the tgt_end as the movement number
-    ax_3dr.text(tgt_end[0], tgt_end[1], tgt_end[2], str(i))
+    sho0 = reach_trial.sho_f[reach_trial.mov_starts[0:1],:]
+    wri_f_fromsho = movwri - sho0
+    # now rotate and subtract x0
+    wri_r = wri_f_fromsho @ R.T - x0
+    ax_3dr.plot(wri_r[:,0], wri_r[:,1], wri_r[:,2])
+    tgt_start = wri_r[0,:]
+    tgt_end = wri_r[-1,:]
+    ax_3dr.plot(tgt_start[0], tgt_start[1], tgt_start[2], 'ro')
+    ax_3dr.plot(tgt_end[0], tgt_end[1], tgt_end[2], 'go')
     ax_3dr.set_xlabel('x (r+)')
     ax_3dr.set_ylabel('y (f+)')
     ax_3dr.set_zlabel('z (u+)')
     # set axis aspect to be equal in each dimension
     ax_3dr.set_aspect('equal')
-    ax_3d.set_title('Position: '+str_bodyprtcal+' wrt shoulder')
 
-    t_    = reach_trial.time[inds]
-    t_    = t_ - t_[0]
-    vel   = getattr(reach_trial,"vel_"+str_bodyprtcal)
-    tv_   = lr.tanvel(vel[inds])
-    ax_tv.plot(t_,tv_)
-    # label the movement end with the movement number
-    ax_tv.text(t_[-1],tv_[-1],str(i))
+    # ax_3dr.set_xlim([-200,800])
+    # ax_3dr.set_ylim([-200,800])
+    # ax_3dr.set_zlim([-500,500])
+
+    t = reach_trial.time[inds]  
+    t = t-t[0]
+    
+    ax_tv.plot(t,reach_trial.tanvel_wri[inds])
     # end loop through movements  
 
-  plt.xlabel('Time (s)')
-  plt.ylabel('tangential velocity: '+str_bodyprtcal+' (m/s)')
-  # set tight layout
-  plt.tight_layout()
+  plt.xlabel('Time')
+  plt.ylabel('wri_f')
   plt.show(block=True)
-  
-
 
 # %%
 # try out cross correlating a signal with itself.
 # use the velocity traces snipped out here. 
-# f,ax = plt.subplots(2,1)
+f,ax = plt.subplots(2,1)
 
-# # the snipped segment, the template.
-# indmov = 4
-# one_snip = list_time_position[indmov]
-# # one_snip = np.reshape(one_snip[1][:,0], (-1, 1))
-# one_snip = one_snip[1][:,0:2]
-# # compute derivative of one_snip using np.gradient
-# vel_snip = lr.vel(np.arange(0,one_snip.shape[0])*1/sr_datacollection,one_snip)
-# tv_snip  = np.sqrt(np.sum(vel_snip**2,axis=1))
+# the snipped segment, the template.
+indmov = 4
+one_snip = tpllist_time_wrist[indmov]
+# one_snip = np.reshape(one_snip[1][:,0], (-1, 1))
+one_snip = one_snip[1][:,0:2]
+# compute derivative of one_snip using np.gradient
+vel_snip = lr.vel(np.arange(0,one_snip.shape[0])*1/sr_datacollection,one_snip)
+tv_snip  = np.sqrt(np.sum(vel_snip**2,axis=1))
 
-# # the whole trace, the signal.
-# ind01 = np.arange(reach_trial.mov_starts[indmov],reach_trial.mov_ends[indmov])
-# #reach tanvel_wri
-# tv_signal = lr.tanvel(getattr(reach_trial,str_bodyprtcal))
+# the whole trace, the signal.
+ind01 = np.arange(reach_trial.mov_starts[indmov],reach_trial.mov_ends[indmov])
+#reach tanvel_wri
+tv_signal = reach_trial.tanvel_wri[ind01]
 
-# cs = lr.normxcorr2(tv_snip,tv_signal)
-# #
-# cs2 = cs[tv_snip.shape[0]:-1]
-# ax[0].plot(tv_snip)
-# ax[0].plot(tv_signal)
-# ax[1].plot(cs2)
-# # get max of cs2
-# indmax = np.argmax(cs2)
-# ax[1].plot(indmax,cs2[indmax],'ro')
+cs = lr.normxcorr2(tv_snip,tv_signal)
+#
+cs2 = cs[tv_snip.shape[0]:-1]
+ax[0].plot(tv_snip)
+ax[0].plot(tv_signal)
+ax[1].plot(cs2)
+# get max of cs2
+indmax = np.argmax(cs2)
+ax[1].plot(indmax,cs2[indmax],'ro')
 
-# plt.show(block=True)
+plt.show(block=True)
 # %%

@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-from scipy import signal 
+from scipy import signal
+from colour import Color 
 import statsmodels.formula.api as smf
 import matplotlib
 import scipy
@@ -10,41 +11,18 @@ matplotlib.use('qtagg')#tqagg
 # Functions for students to use to simplify their data analysis
 # get_list_x_clicks_on_plot(data)
 
-def process_caliscope_time(data:np.array):
-  """
-  Process the time data from the caliscope data.
-  Inputs:
-  data: pandas dataframe
-    the time data from the caliscope file 'frame_time_history.csv' which has
-      sync_index
-      port
-      frame_index
-      frame_time
+def plot_welch_spectrum(data, sample_rate=1.0):
+    freqs, power = signal.welch(data, sample_rate, nperseg=1024)
+    plt.semilogy(freqs, power)
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Power Spectral Density')
+    plt.grid(True)
+    plt.show(block=True)
 
-  Returns:
-  time: np.array
-    the time data in seconds
-  """
+def tanvel(vel):
+  return np.sqrt(vel[:,0]**2 + vel[:,1]**2 + vel[:,2]**2)
 
-  # there are multiple rows with the same sync_index. 
-  # for now, find the unique values of sync_index:
-  sync_index_u = data['sync_index'].unique()
-  # loop through the unique values to grab the rows having that sync_index
-  time_s        = np.zeros(len(sync_index_u))
-  time_s_range  = np.zeros((len(sync_index_u),2))
-  time_s_sd     = np.zeros(len(sync_index_u))
-  
-  for i, sync_index in enumerate(sync_index_u):
-    # get all of the rows with that sync_index
-    rows = data[data['sync_index'] == sync_index]
-    # take the average, sd and range of the frame_time
-    time_s[i] = np.mean(rows['frame_time'])
-    time_s_sd[i] = np.std(rows['frame_time'])
-    time_s_range[i] = [np.min(rows['frame_time'])-time_s[i],np.max(rows['frame_time']-time_s[i])]
-  time_s = time_s - time_s[0]
-  return time_s, time_s_sd, time_s_range
-
-def get_rotmat_x0(data_nx3):
+def get_rotmat_x0(data_nx3,pm = None, xdir=1):
   
   # plot the data, with a title
   f,ax = plt.subplots()
@@ -77,7 +55,11 @@ def get_rotmat_x0(data_nx3):
   pt3 = data_nx3[ind_xclicks[2],:]
   
   # define which order. assume standard:
-  v1 = pt3 - pt2 # positive right
+  if xdir == 1:
+    v1 = pt3 - pt2 # positive right
+  else:
+    v1 = pt2 - pt3
+
   v2 = pt2 - pt1 # positive forward
   # normalize v1 and v2 to be unit length
   v1 = v1/np.linalg.norm(v1)
@@ -92,18 +74,20 @@ def get_rotmat_x0(data_nx3):
   R = np.array([v1,v2,v3])
 
   # test by first rotating data_nx3, then subtracting out pt1, then plotting
-  data_nx3_rot = R @ (data_nx3.T)
-  x0           = data_nx3_rot[:,ind_xclicks[0]]
-  data_nx3_rot = data_nx3_rot.T - x0
+  data_nx3_rot = R @ data_nx3.T
+  data_nx3_rot = data_nx3_rot.T
+  x0           = data_nx3_rot[ind_xclicks[0],:]
+  data_nx3_rot = data_nx3_rot - x0
   
   f,ax = plt.subplots()
   # make it a 3D figure
   ax = f.add_subplot(111, projection='3d')
-  ax.plot(data_nx3_rot[:,0],data_nx3_rot[:,1],data_nx3_rot[:,2],'k.')
+  ax.plot(data_nx3_rot[ind_xclicks[0]:-1,0],data_nx3_rot[ind_xclicks[0]:-1,1],data_nx3_rot[ind_xclicks[0]:-1,2],'k.')
   
   # plot the rotated points with circles
   pt2_R = R @ (pt2 - pt1)
   pt3_R = R @ (pt3 - pt1)
+  ax.plot(0,0,0,'bo')
   ax.plot(pt2_R[0],pt2_R[1],pt2_R[2],'ro')
   ax.plot(pt3_R[0],pt3_R[1],pt3_R[2],'go')
   
@@ -111,10 +95,10 @@ def get_rotmat_x0(data_nx3):
   ax.set_ylabel('Y (m)')
   ax.set_zlabel('Z (m)')
 
-  #set limits t be -1 to 1
-  ax.set_xlim3d([-.1,0.1])
-  ax.set_ylim3d([-.1,0.1])
-  ax.set_zlim3d([-.1,0.1])
+  if pm is not None:
+    ax.set_xlim3d([-pm,pm])
+    ax.set_ylim3d([-pm,pm])
+    ax.set_zlim3d([-pm,pm])
 
   #set el az to be 70, -90, a nice overhead view of the movement
   ax.view_init(elev=70,azim=-90)
@@ -148,7 +132,243 @@ def lowpass_cols(datacols:np.array, order=4, fs=30.0, cutoff_freq=12.0):
 
   return filtered_data
 
-class mainSeq():
+class ReachBody():
+  df = np.zeros((0,3))
+  name = ""
+  filename = ""
+  sr   = 1 # needs to be provided
+  R    = np.eye(3)
+  X0   = np.zeros(3)
+
+  rawmat  = np.zeros((10,3))  # Raw data
+  rsmat   = np.zeros((10,3))  # Resampled data
+  time    = np.zeros(10)      # Fixed sample time
+  mat     = np.zeros((10,3))  # Rotated and zeroed data
+  velmat  = np.zeros((10,3)) # Velocity data
+
+  mov_starts = []
+  mov_ends = []
+
+  def __init__(self,df,name,fname,R,X0,sr,filtorder=4,cutoff_freq1=10, cutoff_freq2=5):
+    self.data = df
+    self.name = name
+    self.R    = R
+    self.X0   = X0
+    self.sr   = sr
+    self.filename = fname
+
+    bplist = reachbodyparts()
+    rawtime   = df['sync_index'].to_numpy()*1/sr
+
+    self.rawmat  = simple_reachbody(df,bplist)
+    # catch both time and resampled data in return
+    self.time, self.rsmat = resample_data(rawtime,self.rawmat,sr)
+    # make a copy of self.rsmat -> self.mat
+    self.mat = self.rsmat.copy()
+    self.velmat  = np.zeros_like(self.mat)
+    
+    ## rotate, and raw slices -> overwritten self.mat
+    for (ib,bp) in enumerate(bplist):
+      if bp[-1] == 'x':
+        tempmat = self.mat[:,ib:ib+3]
+        self.mat[:,ib:ib+3] = (R @ tempmat.T).T - X0
+        setattr(self,"unf_"+bp[:-2],self.mat[:,ib:ib+3])            #slices prefixed 'unf_'
+
+    ## filtered data -> overwrite 'mat'
+    self.mat = lowpass_cols(self.mat,order=filtorder,fs=sr,cutoff_freq=cutoff_freq1)
+    for (ib,bp) in enumerate(bplist):
+      if bp[-1] == 'x':
+        setattr(self,bp[:-2],self.mat[:,ib:ib+3])                   #slices, no prefix.
+    
+    ## create velocity matrix and velocity handles -> velmat, vel_* slices
+    self.velmat = vel(self.time, self.mat)
+
+    ## filter velocity -> overwrite velmat
+    self.velmat = lowpass_cols(self.velmat,order=filtorder,fs=sr,cutoff_freq=cutoff_freq2)
+    for (ib,bp) in enumerate(bplist):
+      if bp[-1] == 'x':
+        setattr(self,"vel_"+bp[:-2],self.velmat[:,ib:ib+3])            #slices, prefixed vel_
+
+  def mainsequence(self, cached_folder, bodypart = "right_index_finger_tip",thresh1_m_per_s=.2):
+    '''
+    computes mainsequence() data [D, V, T: Distance, Velocity, Time (duration)] for the reach data file.
+
+    '''
+    distances = list()
+    durations = list()
+    peakspeeds = list()
+    valleys    = list()
+    threepeaks = list()
+    # note the valleys are the middle movement, the one we sort of want most.
+
+    # check for cached file _mainsequence.mat
+    # if it exists, load it and return the data
+    # if it doesn't exist, compute the data and save it to a file
+    fsave = os.path.join(cached_folder,self.name+"_mainsequence.mat")
+    
+    #generalize for using any bodypart
+    tv = tanvel(getattr(self, "vel_" + bodypart))
+    pos = getattr(self,bodypart)
+
+    if os.path.exists(fsave):
+      dat = scipy.io.loadmat(fsave)
+      i_whichmax = np.argmax(dat['peakspeeds'])
+      # tv_ff = lowpass(tv,fs=30,cutoff_freq= 2) % we used to heavily filter. 
+      ind_peaks = dat['threepeaks']
+      ind_valleys = dat['valleys']
+      f,ax = plt.subplots()
+      for i in range(len(self.mov_starts)):
+        i0 = self.mov_starts[i]
+        i1 = self.mov_ends[i]
+        t0 = self.time[i0]
+
+        tv_greaterthan = np.where(tv[i0:i1]>thresh1_m_per_s)
+        if tv_greaterthan[0].shape[0] > 0:
+          tshift = self.time[tv_greaterthan[0][0]]
+        else:
+          tshift = 0
+
+        alph = .3
+        if i == i_whichmax:
+          # alpha solid
+          alph = 1
+
+        plt.plot(self.time[i0:i1]-t0-tshift,    tv[i0:i1],alpha = alph)
+        # plt.plot(self.time[i0:i1]-t0,       tv_ff[i0:i1], '--', label='lowpass')
+        ip = ind_peaks[i]
+        iv = ind_valleys[i]
+        plt.plot(self.time[ip]-t0-tshift,   tv[ip], "kx",alpha = alph)
+        plt.plot(self.time[iv]-t0-tshift, tv[iv], "ko",alpha = alph)
+
+      plt.show()
+      ffig = os.path.join(cached_folder,'figures',f'{self.filename}_peaksvalleys.pdf')
+      f.savefig(ffig)
+      return dat['distances'], dat['durations'], dat['peakspeeds'], dat['valleys']
+    
+    else:
+      print(f"File {fsave} not found. Computing main sequence data.")
+      for i in range(len(self.mov_starts)):
+        # suffix _ denotes the data for the current movement
+        tv_    = tv[self.mov_starts[i]:self.mov_ends[i]]
+        pos_ = pos[self.mov_starts[i]:self.mov_ends[i],:]
+        time_ = self.time[self.mov_starts[i]:self.mov_ends[i]]
+
+        ind_peaks, ind_valleys = peaks_and_valleys(tv_)
+        print(ind_peaks, ind_valleys)
+
+        middle_reach_ = pos_[ind_valleys[0]:ind_valleys[1],:]
+        dist_reach = np.sqrt(np.sum((middle_reach_[-1,:]-middle_reach_[0,:])**2))
+        distances.append(dist_reach)
+        peakspeeds.append(max(tv_[ind_valleys[0]:ind_valleys[1]]))
+        durations.append(time_[ind_valleys[1]] - time_[ind_valleys[0]])
+        #append to valleys the ind_valleys: relative not to the start of the reach but the whole file.
+        # (then can use ind valleys and ind_peaks to cut when we want.)
+        valleys.append(ind_valleys + self.mov_starts[i])
+        threepeaks.append(ind_peaks + self.mov_starts[i])
+        # save the data to a file
+      scipy.io.savemat(fsave,{'distances':distances,'durations':durations,'peakspeeds':peakspeeds,'valleys':valleys,'threepeaks':threepeaks})
+      return np.array(distances), np.array(durations), np.array(peakspeeds),valleys
+
+  def cut_middle_movements(self,inds_middle_start_end,bodypart='right_index_finger_tip'):
+    # make a list of the reaches defined by ind_moves, which is really a list pair of indices
+    cutreaches = list()
+    for imov in range(len(inds_middle_start_end)):
+      inds = np.arange(inds_middle_start_end[imov][0],inds_middle_start_end[imov][1])
+      tzeroed = self.time[inds] - self.time[inds[0]]
+      cutreaches.append((tzeroed,np.array(getattr(self,bodypart)[inds,:])))
+    return cutreaches
+
+  def click_add_reach_starts_ends(self, cached_folder, bodypart = "right_index_finger_tip", numclicks=-1, do_skip_figs = False,ylim=(0,1.5)):
+      """
+        Click to add starts and ends of specified bodypart, stores in the object, and saves to a csv file.
+        Inputs:
+        numclicks: int, default -1
+          the number of clicks to make. if -1, then click until you close the figure.
+        do_skip_figs: bool, default False
+          if True, skip the figure and use the saved clicks.
+        Returns: (optionally returns)
+        mov_starts: np.array
+          the indices of the start of the movements
+      
+      """
+
+      cached_file = os.path.join(cached_folder, f'{self.name}_savedclicks.csv')
+      # get the name of the file without the path or suffix
+      
+      indices = []
+          
+      if os.path.exists(cached_file):
+        # Load the file
+        clickpd = pd.read_csv(cached_file)
+        indices = clickpd['indices'].tolist()
+        if do_skip_figs == True:
+          print("Skipping clicks, using saved clicks.")
+          self.mov_starts = indices[::2]
+          self.mov_ends = indices[1::2]
+          return indices[::2], indices[1::2]
+
+      # show the velocity of that bodypart.
+      if len(indices)==0:
+        # which bodypart is moving?
+        vel = getattr(self, f'vel_{bodypart}')
+        tanvel = np.sqrt(vel[:,0]**2 + vel[:,1]**2 + vel[:,2]**2)
+        fig, ax = plt.subplots(4, 1)
+        ax[0].plot(self.time, vel[:,0])
+        ax[0].set_ylabel('v (m/s)')
+        ax[0].set_ylim(ylim)
+        ax[1].plot(self.time, vel[:,1])
+        ax[1].set_ylabel('v (m/s)')
+        ax[1].set_ylim(ylim)
+        ax[2].plot(self.time, vel[:,2])
+        ax[2].set_ylabel('v (m/s)')
+        ax[2].set_ylim(ylim)
+        ax[3].plot(self.time, tanvel)
+        ax[3].set_xlabel('time (s)')
+        ax[3].set_ylabel('v (m/s)')
+        ax[3].set_ylim(ylim)
+
+        clicks = []
+        def onclick(event):
+          clicks.append((event.xdata, event.ydata))
+
+        cid = fig.canvas.mpl_connect('button_press_event', onclick)
+
+        plt.show(block=True)
+        
+        # Extract x-values from clicks and round them
+        x_values = [click[0] for click in clicks]
+        
+        # Find the closest time value in reachdat.time for each click;
+        # these are the indices in the time array.
+        indices = [np.abs(self.time - x).argmin() for x in x_values]
+
+        # Save the indices to a csv file
+        if numclicks > 0:
+          if len(clicks) == numclicks:
+            df = pd.DataFrame(indices, columns=['indices'])
+            df.to_csv(cached_file, index=False)
+          else:
+            print("Not saving indices, because you didn't click enough times.")
+        else:
+          if len(clicks) > 0:
+            df = pd.DataFrame(indices, columns=['indices'])
+            # check if fsave already exists. if it does, ask
+            if os.path.exists(cached_file):
+              print(f"{cached_file} already exists. Do you want to overwrite it?")
+              print("Enter 'y' to overwrite, anything else to not overwrite.")
+              answer = input()
+              if answer == 'y':
+                df.to_csv(cached_file, index=False)
+            else:
+              df.to_csv(cached_file, index=False)
+          else:
+            print("Not saving indices, because you did not click.")
+              
+      self.mov_starts = indices[::2]
+      self.mov_ends = indices[1::2]
+      return indices[::2], indices[1::2]
+
+class MainSeq():
   D = []
   V = []
   T = []
@@ -157,6 +377,56 @@ class mainSeq():
     self.D = D
     self.V = V
     self.T = T
+
+def reachbodyparts():
+  listbody = ['index_finger_tip','thumb_tip','shoulder','elbow','wrist','hip']
+  sides = ['right','left']
+  ax = ['x','y','z']
+  bodyparts = []
+  for body in listbody:
+    for side in sides:
+      for a in ax:
+        bodyparts.append(f"{side}_{body}_{a}")
+  return bodyparts
+
+def plot_power_spectrum(signal, sample_rate=1.0, xlim = None):
+    # Compute the FFT
+    fft = np.fft.fft(signal)
+    # Get the frequencies
+    freqs = np.fft.fftfreq(len(signal), 1/sample_rate)
+    # Compute power spectrum (magnitude squared)
+    power = np.abs(fft)**2
+    if xlim is None:
+      xlim = (0, sample_rate/2)
+
+    # Plot only the positive frequencies (first half)
+    plt.plot(freqs[:len(freqs)//2], power[:len(freqs)//2])
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Power')
+    plt.grid(True)
+    plt.xlim(xlim)
+    plt.show()
+
+def simple_reachbody(df,bplist = reachbodyparts()):
+  """
+  Get the simple reach body parts from the dataframe.
+  
+  Inputs:
+  df: pandas dataframe
+    the dataframe with the body parts
+  
+  Returns:
+  bodyparts: list
+    the list of body parts
+  
+  """
+  bodyxyz = np.zeros((df.shape[0],len(bplist)))
+  for (ib,bp) in enumerate(bplist):
+    if bp in df.columns:
+      bodyxyz[:,ib] = df[bp].to_numpy()
+    else:
+      print(f"Warning: {bp} not in dataframe.")
+  return bodyxyz
 
 def fit_ct(ms, kv = 0.902,kt = 2.264, normV = .3, normT =1.0, verbose = True):
   """
@@ -249,7 +519,7 @@ def fit_ct(ms, kv = 0.902,kt = 2.264, normV = .3, normT =1.0, verbose = True):
 
   return c_t, pvalue, results, f_v, f_t
 
-def peaks_and_valleys(tv_sub,tv_thresh_mms=80, domanual=False):
+def peaks_and_valleys(tv_sub,tv_thresh_m_per_s=0.08, domanual=False):
   """
   Find the peaks and valleys in the speed (i.e. tanvel) data.
   
@@ -271,7 +541,6 @@ def peaks_and_valleys(tv_sub,tv_thresh_mms=80, domanual=False):
     the indices of the valleys
 
   """
-
   ind_peaks   = []
   ind_valleys = [] # valleys define the start and end of the middle movement.
 
@@ -280,7 +549,7 @@ def peaks_and_valleys(tv_sub,tv_thresh_mms=80, domanual=False):
     tv_sub_f = lowpass(tv_sub,fs=30,cutoff_freq= 2)
 
     # Find peaks above tv_thresh
-    ind_peaks, _ = signal.find_peaks(tv_sub_f, height=tv_thresh_mms,distance = 10)
+    ind_peaks, _ = signal.find_peaks(tv_sub_f, height=tv_thresh_m_per_s,distance = 10)
     # Loop between each pair of peaks and find the minima between each
     
     for i in range(len(ind_peaks)-1):
@@ -326,7 +595,7 @@ def peaks_and_valleys(tv_sub,tv_thresh_mms=80, domanual=False):
 
       # Connect the click event to the function
       cid = plt.gcf().canvas.mpl_connect('button_press_event', onclick)
-      plt.show()
+      plt.show(block=True)
       ind_peaks = [coordinates[0],coordinates[2],[coordinates[4]]]
       ind_peaks = [int(np.round(ind_peaks[i])) for i in range(3)]
       ind_valleys = [coordinates[1],coordinates[3]]
@@ -386,7 +655,7 @@ def resample_data(time, data, sr, fill_gaps=True):
   time_resamp = np.arange(time[0], time[-1], 1/sr)
 
   # Resample the data using linear interpolation
-  data_resamp = np.zeros((len(time_resamp),3))
+  data_resamp = np.zeros((len(time_resamp),data.shape[1]))
   for i in range(data.shape[1]):
     if len(time) != len(data[:,i]):
       print(f"Mismatched lengths at i={i}: length of time: {len(time)}, length of data[{i}]: {len(data[:,i])}")
@@ -410,237 +679,122 @@ def vel(time:np.array, data:np.array):
     vel[:,i] = np.gradient(col, time)
   return vel
 
-
-#%%
-# this is a class for the reach data. 
-# i find it really difficult to keep typing fmc['right_shoulder_x'] and so on.
-# we also typically want to work with the data in numpy arrays, not pandas dataframes.
-# and have the xyz data in a single array, not three separate arrays.
-class ReachDataClass:
-  fraw_name = ''
-  sub_name = ''
-  path  = ''
-  time = []
-  sho_r = []
-  elb_r = []
-  wri_r = []
-  sho_f = []
-  elb_f = []
-  wri_f = []
-  tanvel_sho = []
-  tanvel_elb = []
-  tanvel_wri = []
-  vel_sho = []
-  vel_elb = []
-  vel_wri = []
-  vel_sho_r = []
-  vel_elb_r = []
-  vel_wri_r = []
-  R         = []
-
-  mov_starts = []
-  mov_ends = []
-
-# constructor for reach data, receiving a pandas dataframe
-  def __init__(self, dfr:pd.DataFrame, time_s, path, sub_name = '', sr_fixed = 30.0, cutoff_freq = 12.0):
-    self.path = path
-    self.fraw_name = os.path.basename(path)
-    self.time_s = time_s
-    self.sub_name = sub_name
-
-    # get the x and y data for the shoulder, elbow, and wrist
-    # make temp variables for sho elb wri
-    shotemp = np.array([dfr['right_shoulder_x'], dfr['right_shoulder_y'], dfr['right_shoulder_z']]).T
-    elbtemp = np.array([dfr['right_elbow_x'], dfr['right_elbow_y'], dfr['right_elbow_z']]).T
-    writemp = np.array([dfr['right_wrist_x'], dfr['right_wrist_y'], dfr['right_wrist_z']]).T
-
-    # resample the data                   
-    self.time , self.sho_r = resample_data(time_s, shotemp, sr_fixed)
-    _         , self.elb_r = resample_data(time_s, elbtemp, sr_fixed)
-    _         , self.wri_r = resample_data(time_s, writemp, sr_fixed)
-    
-    self.wri_f = lowpass_cols(self.wri_r, fs = sr_fixed, cutoff_freq = cutoff_freq)
-    self.sho_f = lowpass_cols(self.sho_r, fs = sr_fixed, cutoff_freq = cutoff_freq)
-    self.elb_f = lowpass_cols(self.elb_r, fs = sr_fixed, cutoff_freq = cutoff_freq)
-
-    # get the time data
-    self.vel_wri = vel(self.time, self.wri_f)
-    self.vel_elb = vel(self.time, self.elb_f)
-    self.vel_sho = vel(self.time, self.sho_f)
-
-    # raw velocity, which probably we won't use given fmc noise. 
-    self.vel_wri_r = vel(self.time, self.wri_f)
-    self.vel_elb_r = vel(self.time, self.elb_f)
-    self.vel_sho_r = vel(self.time, self.sho_f)
-
-    # add tanvel wrist
-    self.tanvel_wri = np.sqrt(self.vel_wri[:,0]**2 + self.vel_wri[:,0]**2 + self.vel_wri[:,0]**2)
-    self.tanvel_elb = np.sqrt(self.vel_elb[:,1]**2 + self.vel_elb[:,1]**2 + self.vel_elb[:,1]**2)
-    self.tanvel_sho = np.sqrt(self.vel_sho[:,2]**2 + self.vel_sho[:,2]**2 + self.vel_sho[:,2]**2)
-  
-  def mainsequence(self, cached_folder):
-    '''
-    computes mainsequence() data [D, V, T: Distance, Velocity, Time (duration)] for the reach data file.
-
-    '''
-    distances = list()
-    durations = list()
-    peakspeeds = list()
-    valleys    = list()
-    threepeaks = list()
-    # note the valleys are the middle movement, the one we sort of want most.
-
-    # check for cached file _mainsequence.mat
-    # if it exists, load it and return the data
-    # if it doesn't exist, compute the data and save it to a file
-    fsave = os.path.join(cached_folder,self.sub_name+"_mainsequence.mat")
-    if os.path.exists(fsave):
-      dat = scipy.io.loadmat(fsave)
-      i_whichmax = np.argmax(dat['peakspeeds'])
-      tv_ff = lowpass(self.tanvel_wri,fs=30,cutoff_freq= 2)
-      ind_peaks = dat['threepeaks']
-      ind_valleys = dat['valleys']
-      f,ax = plt.subplots()
-      for i in range(len(self.mov_starts)):
-        i0 = self.mov_starts[i]
-        i1 = self.mov_ends[i]
-        t0 = self.time[i0]
-        tvthreshmms = 200
-        tv_greaterthan = np.where(self.tanvel_wri[i0:i1]>200)
-        if tv_greaterthan[0].shape[0] > 0:
-          tshift = self.time[tv_greaterthan[0][0]]
-        else:
-          tshift = 0
-
-        alph = .3
-        if i == i_whichmax:
-          # alpha solid
-          alph = 1
-
-        plt.plot(self.time[i0:i1]-t0-tshift,    self.tanvel_wri[i0:i1],alpha = alph)
-        # plt.plot(self.time[i0:i1]-t0,       tv_ff[i0:i1], '--', label='lowpass')
-        ip = ind_peaks[i]
-        iv = ind_valleys[i]
-        plt.plot(self.time[ip]-t0-tshift,   self.tanvel_wri[ip], "kx",alpha = alph)
-        plt.plot(self.time[iv]-t0-tshift, self.tanvel_wri[iv], "ko",alpha = alph)
-
-      plt.show()
-      ffig = os.path.join(cached_folder,'figures',f'{self.fraw_name[:-4]}_peaksvalleys.pdf')
-      f.savefig(ffig)
-      return dat['distances'], dat['durations'], dat['peakspeeds'], dat['valleys']
-    
-    else:
-      print(f"File {fsave} not found. Computing main sequence data.")
-      for i in range(len(self.mov_starts)):
-        tv    = self.tanvel_wri[self.mov_starts[i]:self.mov_ends[i]]
-        wrist = self.wri_f[self.mov_starts[i]:self.mov_ends[i],:]
-        time = self.time[self.mov_starts[i]:self.mov_ends[i]]
-
-        ind_peaks, ind_valleys = peaks_and_valleys(tv)
-        print(ind_peaks, ind_valleys)
-
-        mid_reach_wrist = wrist[ind_valleys[0]:ind_valleys[1],:]
-        dist_wrist = np.sqrt(np.sum((mid_reach_wrist[:,0]-mid_reach_wrist[:,-1])**2))
-        distances.append(dist_wrist)
-        peakspeeds.append(max(tv[ind_valleys[0]:ind_valleys[1]]))
-        durations.append(time[ind_valleys[1]] - time[ind_valleys[0]])
-        #append to valleys the ind_valleys, relative not to the start of the reach but the whole file.
-        # (then can use ind valleys and ind_peaks to cut when we want.)
-        valleys.append(ind_valleys + self.mov_starts[i])
-        threepeaks.append(ind_peaks + self.mov_starts[i])
-        # save the data to a file
-      scipy.io.savemat(fsave,{'distances':distances,'durations':durations,'peakspeeds':peakspeeds,'valleys':valleys,'threepeaks':threepeaks})
-      return np.array(distances), np.array(durations), np.array(peakspeeds),valleys
-
-  def cut_middle_movements(self,inds_middle_start_end):
-    # make a list of the reaches defined by ind_moves, which is really a list pair of indices
-    cutreaches = list()
-    for imov in range(len(inds_middle_start_end)):
-      inds = np.arange(inds_middle_start_end[imov][0],inds_middle_start_end[imov][1])
-      tzeroed = self.time[inds] - self.time[inds[0]]
-      cutreaches.append((tzeroed,np.array(self.wri_f[inds,:])))
-    return cutreaches
-
-  def click_add_wrist_starts_ends(self, cached_folder, numclicks=-1, do_skip_figs = False):
+def generate_color_range(hue, lightness, sat_low, sat_high, n_colors):
     """
-      Click to add wrist starts and ends, stores in the object, and saves to a csv file.
-      Inputs:
-      numclicks: int, default -1
-        the number of clicks to make. if -1, then click until you close the figure.
-      do_skip_figs: bool, default False
-        if True, skip the figure and use the saved clicks.
-      Returns: (optionally returns)
-      mov_starts: np.array
-        the indices of the start of the movements
+    Generate a range of colors by varying saturation while keeping hue and lightness constant.
     
+    Parameters:
+    -----------
+    hue : float
+        Hue value in range [0, 1]
+    lightness : float
+        Lightness value in range [0, 1]
+    sat_low : float
+        Lower bound for saturation in range [0, 1]
+    sat_high : float
+        Upper bound for saturation in range [0, 1]
+    n_colors : int
+        Number of colors to generate
+    
+    Returns:
+    --------
+    list of tuples
+        List of RGB colors as (r, g, b) tuples with values in range [0, 1]
+    """
+    # Generate linearly spaced saturation values
+    saturations = np.linspace(sat_low, sat_high, n_colors)
+    
+    # Convert HSL to RGB for each saturation value
+    rgb_colors = []
+    for sat in saturations:
+        # Create color using HSL values
+        color = Color(hsl=(hue, sat, lightness))
+        # Get RGB values as tuple
+        rgb_colors.append(color.rgb)
+    
+    return rgb_colors
+
+########################################################################################
+# Author: Ujash Joshi, University of Toronto, 2017                                     #
+# Based on Octave implementation by: Benjamin Eltzner, 2014 <b.eltzner@gmx.de>         #
+# Octave/Matlab normxcorr2 implementation in python 3.5                                #
+# Details:                                                                             #
+# Normalized cross-correlation. Similiar results upto 3 significant digits.            #
+# https://github.com/Sabrewarrior/normxcorr2-python/master/norxcorr2.py                #
+# http://lordsabre.blogspot.ca/2017/09/matlab-normxcorr2-implemented-in-python.html    #
+# Copyright (c) 2017-2023 Ujash Joshi
+
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+########################################################################################
+
+import numpy as np
+from scipy.signal import fftconvolve
+
+def normxcorr2(template, image, mode="full", reshape_if_needed=True):
+    """
+    Input arrays should be floating point numbers.
+    :param template: N-D array, of template or filter you are using for cross-correlation.
+    Must be less or equal dimensions to image.
+    Length of each dimension must be less than length of image.
+    :param image: N-D array
+    :param mode: Options, "full", "valid", "same"
+    full (Default): The output of fftconvolve is the full discrete linear convolution of the inputs. 
+    Output size will be image size + 1/2 template size in each dimension.
+    valid: The output consists only of those elements that do not rely on the zero-padding.
+    same: The output is the same size as image, centered with respect to the ‘full’ output.
+    :return: N-D array of same dimensions as image. Size depends on mode parameter.
     """
 
-    cached_file = os.path.join(cached_folder, f'{self.sub_name}_savedclicks.csv')
-    # get the name of the file without the path or suffix
-    
-    indices = []
+    # reshape if 1D input
+    if np.ndim(template) == 1:
+        template = np.reshape(template, (len(template),1))
+    if np.ndim(image) == 1:
+        image = np.reshape(image, (len(image),1))
         
-    if os.path.exists(cached_file):
-      # Load the file
-      clickpd = pd.read_csv(cached_file)
-      indices = clickpd['indices'].tolist()
-      if do_skip_figs == True:
-        print("Skipping clicks, using saved clicks.")
-        self.mov_starts = indices[::2]
-        self.mov_ends = indices[1::2]
-        return indices[::2], indices[1::2]
+    # If this happens, it is probably a mistake
+    if np.ndim(template) > np.ndim(image) or \
+            len([i for i in range(np.ndim(template)) if template.shape[i] > image.shape[i]]) > 0:
+        print("normxcorr2: TEMPLATE larger than IMG. Arguments may be swapped.")
 
-    if len(indices)==0:
-      fig, ax = plt.subplots(4, 1)
-      ax[0].plot(self.time, self.vel_wri[:,0])
-      ax[0].set_ylabel('v (mm/s)')
-      ax[1].plot(self.time, self.vel_wri[:,1])
-      ax[1].set_ylabel('v (mm/s)')
-      ax[2].plot(self.time, self.vel_wri[:,2])
-      ax[2].set_ylabel('v (mm/s)')
-      ax[3].plot(self.time, self.tanvel_wri)
-      ax[3].set_xlabel('time (s)')
-      ax[3].set_ylabel('v (mm/s)')
+    template = template - np.mean(template)
+    image = image - np.mean(image)
 
-      clicks = []
-      def onclick(event):
-        clicks.append((event.xdata, event.ydata))
+    a1 = np.ones(template.shape)
+    # Faster to flip up down and left right then use fftconvolve instead of scipy's correlate
+    ar = np.flipud(np.fliplr(template))
+    out = fftconvolve(image, ar.conj(), mode=mode)
+    
+    image = fftconvolve(np.square(image), a1, mode=mode) - \
+            np.square(fftconvolve(image, a1, mode=mode)) / (np.prod(template.shape))
 
-      cid = fig.canvas.mpl_connect('button_press_event', onclick)
+    # Remove small machine precision errors after subtraction
+    image[np.where(image < 0)] = 0
 
-      plt.show(block=True)
-      
-      # Extract x-values from clicks and round them
-      x_values = [click[0] for click in clicks]
-      
-      # Find the closest time value in reachdat.time for each click;
-      # these are the indices in the time array.
-      indices = [np.abs(self.time - x).argmin() for x in x_values]
+    template = np.sum(np.square(template))
+    with np.errstate(divide='ignore',invalid='ignore'): 
+        out = out / np.sqrt(image * template)
 
-      # Save the indices to a csv file
-      if numclicks > 0:
-        if len(clicks) == numclicks:
-          df = pd.DataFrame(indices, columns=['indices'])
-          df.to_csv(cached_file, index=False)
-        else:
-          print("Not saving indices, because you didn't click enough times.")
-      else:
-        if len(clicks) > 0:
-          df = pd.DataFrame(indices, columns=['indices'])
-          # check if fsave already exists. if it does, ask
-          if os.path.exists(cached_file):
-            print(f"{cached_file} already exists. Do you want to overwrite it?")
-            print("Enter 'y' to overwrite, anything else to not overwrite.")
-            answer = input()
-            if answer == 'y':
-              df.to_csv(cached_file, index=False)
-          else:
-            df.to_csv(cached_file, index=False)
-        else:
-          print("Not saving indices, because you did not click.")
-            
-    self.mov_starts = indices[::2]
-    self.mov_ends = indices[1::2]
-    return indices[::2], indices[1::2]
+    # Remove any divisions by 0 or very close to 0
+    out[np.where(np.logical_not(np.isfinite(out)))] = 0
+    
+    return out
 
-# %%
+

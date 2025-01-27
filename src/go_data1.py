@@ -155,7 +155,7 @@ rightarm = draw_body_parts(pddata,R,X0,np.arange(0,pddata.shape[0],10),pm=.1)
 f2,ax2 = plt.subplots()
 bodypart = "wrist"
 wr = pddata[["right_"+bodypart+"_x","right_"+bodypart+"_y","right_"+bodypart+"_z"]].to_numpy()
-wr = wr @ R.T
+wr = (R @ wr.T).T
 wr = wr - X0
 ax2.plot(pddata["sync_index"],wr[:,0],label="x")
 ax2.plot(pddata["sync_index"],wr[:,1],label="y")

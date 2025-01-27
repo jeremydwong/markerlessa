@@ -10,6 +10,7 @@
 # datafolder_string_surabhi
 
 datafolder_string = r"/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Undergrad 2024 Shared Folder/"
+datafolder_string = r"/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Project Freemocap 2024/mwc/"
 date_string       = "2025-01-10"
 subj_name         = "jer"
 sr_datacollection = 28 #this defines interpolation. 

@@ -24,11 +24,8 @@ Poetry
 * poetry env use $(pyenv which python)  # Points Poetry to pyenv's Python
 * poetry install
 
-* Clone or download the repository
-* Navigate to the repoository directory.
-* poetry will automatically install all dependencies for python 3.11.10. So in a new conda environment (eg `conda create -n markerlessa_env python=3.11.10`), install poetry via `conda install poetry`.
-* run `poetry install` to install all dependencies
-* run the file src/go_test.py to test the installation via `python src/go_test.py`. 
+then,  
+run the file src/go_test.py to test the installation via `python src/go_test.py`. 
 
 ### Contribution guidelines ###
 

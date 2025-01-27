@@ -4,18 +4,17 @@
 # and the outputs are...
 
 # here are the subject-specific and analyzer-specific things.
-# datafolder_string_zara
-# datafolder_string_jer
-# datafolder_string_jess
-# datafolder_string_surabhi
+datafolder_string_zara =r""
+datafolder_string_jer = r"/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Undergrad 2024 Shared Folder/"
+datafolder_string_jess = r""
+datafolder_string_surabhi = ""
 
-datafolder_string = r"/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Undergrad 2024 Shared Folder/"
-datafolder_string = r"/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Project Freemocap 2024/mwc/"
+datafolder_string = datafolder_string_jer
 date_string       = "2025-01-10"
-subj_name         = "jer"
+fname_coords      = "recording_coord"
+fnames_trials     = ["recording_circles5sec","recording_lines","recording_lines2"]
 sr_datacollection = 28 #this defines interpolation. 
-fname_coords      = 'recording_coord'
-fnames_trials     = ['recording_circles5sec']
+subj_name         = "jer"
 model_type        = 'SIMPLE_HOLISTIC'
 str_bodyprtcal    = 'right_index_finger_tip'
 

@@ -4,9 +4,9 @@
 # and the outputs are...
 
 # here are the subject-specific and analyzer-specific things.
-datafolder_string_zara =r""
-datafolder_string_jer = r"/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Undergrad 2024 Shared Folder/"
-datafolder_string_jess = r""
+datafolder_string_zara  = r"/Users/zarwareenkhan/Library/CloudStorage/OneDrive-Personal/Undergrad 2024 Shared Folder"
+datafolder_string_jer   = r"/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Undergrad 2024 Shared Folder/"
+datafolder_string_jess  = r"C:\Users\JC\University of Calgary\Jeremy Wong - Undergrad 2024 Shared Folder"
 datafolder_string_surabhi = ""
 
 datafolder_string = datafolder_string_jer

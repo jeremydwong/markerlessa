@@ -1,15 +1,20 @@
 #%%this is a template data processing file.
 # you'll fill out the things in this first block, and then you will run the rest. 
-# so the inputs are...
-# and the outputs are...
+# so the inputs are:
+# datafolder, date-folder, subject name, sr_datacollection, fname_coords, fnames_trials, model_type, str_bodyprtcal
+# and the outputs are:
+# 1. rotation matrix
+# 2. reach data
+# 3. main sequence data
+# 4. plots of the reach data
 
 # here are the subject-specific and analyzer-specific things.
-# datafolder_string_zara
-# datafolder_string_jer
-# datafolder_string_jess
+datafolder_string_zara  = r"/Users/zarwareenkhan/Library/CloudStorage/OneDrive-Personal/Undergrad 2024 Shared Folder"
+datafolder_string_jer   = r"/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Undergrad 2024 Shared Folder/"
+datafolder_string_jess  = r"C:\Users\JC\University of Calgary\Jeremy Wong - Undergrad 2024 Shared Folder"
 # datafolder_string_surabhi
 
-datafolder_string = r"/Users/jeremy/Library/CloudStorage/OneDrive-UniversityofCalgary/Undergrad 2024 Shared Folder/"
+datafolder_string = datafolder_string_jer #one of the four above
 date_string       = "2025-01-10"
 subj_name         = "jer"
 sr_datacollection = 28 #this defines interpolation. 

@@ -13,7 +13,7 @@ For students: You may use either poetry or conda to install.
 Conda  
 * Clone the repository
 * in your terminal, move into that directory 
-* conda env update -f environment.yml
+* conda env create -f environment.yml
 
 Poetry
 * Clone the repository

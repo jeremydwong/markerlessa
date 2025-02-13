@@ -13,7 +13,7 @@ For students: You may use either poetry or conda to install.
 Conda  
 * Clone the repository
 * in your terminal, move into that directory 
-* ```conda env create -f environment.yml --arch arm64``` (macOS) or ```conda env create -f environment.yml --arch x86_64``` (windows)
+* ```conda env create -f environment.yml --platform osx-arm64``` (macOS) or ```conda env create -f environment.yml --platform win-64``` (windows)
 
 Poetry
 * Clone the repository

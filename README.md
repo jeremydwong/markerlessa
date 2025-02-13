@@ -13,16 +13,18 @@ For students: You may use either poetry or conda to install.
 Conda  
 * Clone the repository
 * in your terminal, move into that directory 
-* conda env create -f environment.yml
+* ```conda env create -f environment.yml --arch arm64``` (macOS) or ```conda env create -f environment.yml --arch x86_64``` (windows)
 
 Poetry
 * Clone the repository
 * in your terminal, move into the directory
-* pyenv install 3.11.0
-* pyenv local 3.11.0  # Creates .python-version file for this directory
-* curl -sSL https://install.python-poetry.org | python3 -
-* poetry env use $(pyenv which python)  # Points Poetry to pyenv's Python
-* poetry install
+* ```pyenv install 3.11.0 ```
+* ```pyenv local 3.11.0 ``` # Creates .python-version file for this directory
+* ```curl -sSL https://install.python-poetry.org | python3 - ```
+* ```poetry env use $(pyenv which python)  ```# Points Poetry to pyenv's Python
+* ``` poetry config installer.modern-installation false ``` # avoid problems identifying architecture. 
+* ```poetry install ```
+
 
 then,  
 run the file src/go_test.py to test the installation via `python src/go_test.py`. 

@@ -204,7 +204,8 @@ class ReachBody():
     # check for cached file _mainsequence.mat
     # if it exists, load it and return the data
     # if it doesn't exist, compute the data and save it to a file
-    fsave = os.path.join(cached_folder,self.name+"_mainsequence.mat")
+    base, ext = os.path.splitext(self.filename)
+    fsave = os.path.join(cached_folder,self.name+"_"+base+"_mainsequence.mat")
     
     #generalize for using any bodypart
     tv = tanvel(getattr(self, "vel_" + bodypart))
@@ -292,7 +293,8 @@ class ReachBody():
       
       """
 
-      cached_file = os.path.join(cached_folder, f'{self.name}_savedclicks.csv')
+      base, ext = os.path.splitext(self.filename)
+      cached_file = os.path.join(cached_folder, f'{self.name+"_"+base+"_savedclicks.csv"}')
       # get the name of the file without the path or suffix
       
       indices = []

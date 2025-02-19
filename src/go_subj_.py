@@ -19,7 +19,7 @@ date_string       = "2025-01-10"
 subj_name         = "jer"
 sr_datacollection = 28 #this defines interpolation. 
 fname_coords      = 'recording_coord'
-fnames_trials     = ['recording_circles5sec']
+fnames_trials     = ['recording_circles5sec','recording_coord']
 model_type        = 'SIMPLE_HOLISTIC'
 str_bodyprtcal    = 'right_index_finger_tip'
 
@@ -111,7 +111,7 @@ for i in range(len(fnames_trials)):
   
   # creates an object that organizes the data nicely; so that for 
   # example reach_trial.wri is nX3.
-  reach_trial = lr.ReachBody(pddata_cur, subj_name, fname_coords, R, x0, sr_datacollection)
+  reach_trial = lr.ReachBody(pddata_cur, subj_name, fnames_trials[i], R, x0, sr_datacollection)
 
   # extract starts and ends with a series of clicks.
   reach_trial.click_add_reach_starts_ends(cached_folder=cached_folder_string) #can be different for each user. so done programmatically.

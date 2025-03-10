@@ -136,7 +136,6 @@ def get_ps_caliscope_aligned_ranges(fname_trial_caliscope,fname_trial_ps,R_cal,X
   correlation2 = correlation2[kernel.shape[0]:]
   optimal_shift = np.argmax(correlation2)
 
-
   # plot the shifted data
   fig, ax = plt.subplots()
   ax.plot(f_cal_up[kernel_start:, 2], label="caliscope")
@@ -145,15 +144,24 @@ def get_ps_caliscope_aligned_ranges(fname_trial_caliscope,fname_trial_ps,R_cal,X
   plt.show(block=True)
   # return these pieces of f_cal_up and f_ps
   f_cal_up = f_cal_up[kernel_start:,:]
+  nans = np.isnan(f_cal_up)
+  not_nans = ~nans
+  indices = np.arange(len(f_cal_up))
+  for i in range(f_cal_up.shape[1]):
+    f_cal_up[nans[:, i], i] = np.interp(indices[nans[:, i]], indices[not_nans[:, i]], f_cal_up[not_nans[:, i], i])
+
   f_ps = f_ps[optimal_shift:optimal_shift + len(f_cal_up), :]
   # downsample from the rounded sr_ps / sr_cal ratio
   f_ps = f_ps[::sr_ps // sr_cal, :]
   f_cal_up = f_cal_up[::sr_ps // sr_cal, :]
+
   return f_ps, f_cal_up
 
 #%%
 # test this on a trial
-psout, calout = get_ps_caliscope_aligned_ranges("recording_2","recording_2.csv",R_caliscope,x0_caliscope,R_ps,x0_ps)
+psout, calout = get_ps_caliscope_aligned_ranges("recording_6","recording_6.csv",R_caliscope,x0_caliscope,R_ps,x0_ps)
+# Fill in NaNs in the calout with linearly interpolated values
+
 #%%
 # filter both
 import scipy.signal as signal

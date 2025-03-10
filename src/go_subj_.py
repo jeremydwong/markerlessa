@@ -22,7 +22,7 @@ fname_coords      = 'recording_coord'
 fnames_trials     = ['recording_circles5sec','recording_coord']
 model_type        = 'SIMPLE_HOLISTIC'
 str_bodyprtcal    = 'right_index_finger_tip'
-
+coord_xdir        = -1
 #%%
 import os
 cached_folder_string = os.path.join(datafolder_string,"cached")
@@ -75,8 +75,14 @@ if os.path.exists(fname_full):
   dat = scipy.io.loadmat(fname_full)
   R   = dat["R"]
   x0  = dat["x0"]
+  # if g exists, load it too
+  if "g" in dat:
+    g = dat["g"]
+  else:
+    g = None
+  print(f"Loaded rotation matrix from {fname_full}")
 else:
-  R,x0    = lr.get_rotmat_x0(cal_bdyprt)
+  R,x0,g = lr.get_rotmat_x0(cal_bdyprt, xdir=coord_xdir)
   # save R
   scipy.io.savemat(fname_full,{'R':R, 'x0':x0})
 

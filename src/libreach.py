@@ -104,7 +104,11 @@ def get_rotmat_x0(data_nx3,pm = None, xdir=1):
   ax.view_init(elev=70,azim=-90)
 
   plt.show(block = True)
-  return R,x0
+  # set g to be lengths of pt2-pt1 and pt3-pt1
+  gy = np.linalg.norm(pt2 - pt1)
+  gx = np.linalg.norm(pt3 - pt1)
+  gs = np.array([gx,gy])
+  return R,x0,gs
 
 def lowpass(data:np.array, order=4, fs=30.0, cutoff_freq=10.0):
 #lowpass and return a particular data column

@@ -11,6 +11,12 @@ matplotlib.use('qtagg')#tqagg
 # Functions for students to use to simplify their data analysis
 # get_list_x_clicks_on_plot(data)
 
+class mainSeq():
+  D = []
+  V = []
+  T = []
+
+
 def plot_welch_spectrum(data, sample_rate=1.0):
     freqs, power = signal.welch(data, sample_rate, nperseg=1024)
     plt.semilogy(freqs, power)
@@ -502,14 +508,30 @@ def fit_ct(ms, kv = 0.902,kt = 2.264, normV = .3, normT =1.0, verbose = True):
   V = ms.V
   T = ms.T
 
-  Adur = (T / normT) **4
-  bdur = (kt) **4 * D # note jer removed kt/normT here.
+  # # Define power law functions
+  #     fn_v = (c_t, L) -> k_v*c_t.^(1/4) .* ((1/M)^(1/4)) .* L.^(3/4)
+  
+  # A_v = (k_v/norm_v) * L.^(3/4)
+  # b_v = (V ./ norm_v)
 
-  Aspd = (1/normV)**4 * kv**4 * D**3
-  bspd = (V / normV)**4
+  # # T, duration. note: c_t is in the denominator.
+  # fn_t = (c_t, L) -> k_t*(1 ./ c_t).^(1/4) .* ((M)^(1/4)) .* L.^(1/4)
 
-  A = np.concatenate((Adur,Aspd))
-  b = np.concatenate((bdur,bspd))
+  # A_t = T/norm_t
+  # b_t = (k_t/norm_t) * L.^(1/4)
+  
+  # # stack T and V. if we want to fit only one, do it here.
+  # A = [A_t; A_v]
+  # b = [b_t; b_v]
+  
+  A_t = (T / normT)
+  b_t = (kt/ normT) * D**(1/4) # note jer removed kt/normT here.
+
+  A_v = (kv/normV)* D**(3/4)
+  b_v = (V / normV)
+
+  A = np.concatenate((A_t,A_v))
+  b = np.concatenate((b_t,b_v))
 
   results = smf.ols('b ~ A -1', data = pd.DataFrame({'A':A,'b':b})).fit()
   c_t     = results.params.A #our estimate of the cost of time. 

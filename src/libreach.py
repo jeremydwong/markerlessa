@@ -199,7 +199,7 @@ class ReachBody():
       if bp[-1] == 'x':
         setattr(self,"vel_"+bp[:-2],self.velmat[:,ib:ib+3])            #slices, prefixed vel_
 
-  def mainsequence(self, cached_folder, bodypart = "right_index_finger_tip",thresh1_m_per_s=.2):
+  def mainsequence(self, cached_folder, bodypart = "right_index_finger_tip",thresh1_m_per_s=.2,showfigs=True):
     '''
     computes mainsequence() data [D, V, T: Distance, Velocity, Time (duration)] for the reach data file.
 
@@ -227,7 +227,8 @@ class ReachBody():
       # tv_ff = lowpass(tv,fs=30,cutoff_freq= 2) % we used to heavily filter. 
       ind_peaks = dat['threepeaks']
       ind_valleys = dat['valleys']
-      f,ax = plt.subplots()
+      if showfigs:
+        f,ax = plt.subplots()
       for i in range(len(self.mov_starts)):
         i0 = self.mov_starts[i]
         i1 = self.mov_ends[i]
@@ -243,17 +244,18 @@ class ReachBody():
         if i == i_whichmax:
           # alpha solid
           alph = 1
-
-        plt.plot(self.time[i0:i1]-t0-tshift,    tv[i0:i1],alpha = alph)
-        # plt.plot(self.time[i0:i1]-t0,       tv_ff[i0:i1], '--', label='lowpass')
         ip = ind_peaks[i]
         iv = ind_valleys[i]
-        plt.plot(self.time[ip]-t0-tshift,   tv[ip], "kx",alpha = alph)
-        plt.plot(self.time[iv]-t0-tshift, tv[iv], "ko",alpha = alph)
 
-      plt.show()
-      ffig = os.path.join(cached_folder,'figures',f'{self.filename}_peaksvalleys.pdf')
-      f.savefig(ffig)
+        if showfigs:
+          plt.plot(self.time[i0:i1]-t0-tshift,    tv[i0:i1],alpha = alph)
+          plt.plot(self.time[ip]-t0-tshift,   tv[ip], "kx",alpha = alph)
+          plt.plot(self.time[iv]-t0-tshift, tv[iv], "ko",alpha = alph)
+
+      if showfigs:
+        plt.show()
+        ffig = os.path.join(cached_folder,'figures',f'{self.filename}_peaksvalleys.pdf')
+        f.savefig(ffig)
       return dat['distances'], dat['durations'], dat['peakspeeds'], dat['valleys']
     
     else:
@@ -289,7 +291,7 @@ class ReachBody():
       cutreaches.append((tzeroed,np.array(getattr(self,bodypart)[inds,:])))
     return cutreaches
 
-  def click_add_reach_starts_ends(self, cached_folder, bodypart = "right_index_finger_tip", numclicks=-1, do_skip_figs = False,ylim=(0,1.5)):
+  def click_add_reach_starts_ends(self, cached_folder, bodypart = "right_index_finger_tip", numclicks=-1, showfigs = True,ylim=(0,1.5)):
       """
         Click to add starts and ends of specified bodypart, stores in the object, and saves to a csv file.
         Inputs:
@@ -313,7 +315,7 @@ class ReachBody():
         # Load the file
         clickpd = pd.read_csv(cached_file)
         indices = clickpd['indices'].tolist()
-        if do_skip_figs == True:
+        if showfigs == False:
           print("Skipping clicks, using saved clicks.")
           self.mov_starts = indices[::2]
           self.mov_ends = indices[1::2]
